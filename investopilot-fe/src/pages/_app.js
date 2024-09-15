@@ -9,6 +9,8 @@ import Session from 'supertokens-auth-react/recipe/session';
 import EmailPassword from "supertokens-auth-react/recipe/emailpassword";
 import { EmailPasswordPreBuiltUI } from 'supertokens-auth-react/recipe/emailpassword/prebuiltui';
 
+import { ProfilePage } from "@/components/app-profile-page";
+import { DashboardPage } from "@/components/app-dashboard-page";
 
 const MyApp = ({ Component, pageProps }) => {
   const [isClient, setIsClient] = useState(false);
@@ -45,6 +47,8 @@ const MyApp = ({ Component, pageProps }) => {
           {/* Your app routes */}
           <Route path="/auth/*" element={<Component {...pageProps} />} />
           <Route path="/" element={<ProtectedRoute />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>
@@ -56,6 +60,7 @@ const ProtectedRoute = ({ Component, pageProps }) => {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [userEmail, setUserEmail] = useState(null);
 
   useEffect(() => {
     async function checkSession() {
@@ -80,11 +85,7 @@ const ProtectedRoute = ({ Component, pageProps }) => {
     return <Navigate to="/auth" />;
   }
 
-  return <LoggedInPage email={userId} />;
-};
-
-const LoggedInPage = ({ email }) => {
-  return <div>You are logged in as {email}</div>;
+  return <DashboardPage />;
 };
 
 // Ensure getInitialProps is handled correctly

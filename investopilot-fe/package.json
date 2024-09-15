@@ -9,12 +9,20 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.441.0",
     "next": "14.2.11",
     "react": "^18",
     "react-dom": "^18",
     "react-router-dom": "^6.26.2",
+    "recharts": "^2.12.7",
     "supertokens-auth-react": "^0.47.0",
-    "supertokens-web-js": "^0.13.0"
+    "supertokens-web-js": "^0.13.0",
+    "tailwind-merge": "^2.5.2",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "eslint": "^8",
