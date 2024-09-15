@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class User(BaseModel):
-    id: int
+    id: str
     openai_key: str
     stocks: Union[str, list[str]]
 

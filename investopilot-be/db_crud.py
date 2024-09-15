@@ -24,12 +24,12 @@ def get_or_create_user(db: Session, user_id: str):
 
 
 def get_stocks(db: Session, user_id: str):
-    db_user = get_or_create_user(user_id=user_id)
+    db_user = get_or_create_user(db=db, user_id=user_id)
     return db_user.stocks
 
 
 def update_stocks(db: Session, user_id: str, stocks: list[str]):
-    db_user = get_or_create_user(user_id=user_id)
+    db_user = get_or_create_user(db=db, user_id=user_id)
     db_user.stocks = stocks
     db.commit()
     db.refresh(db_user)
@@ -37,7 +37,7 @@ def update_stocks(db: Session, user_id: str, stocks: list[str]):
 
 
 def update_openai_key(db: Session, user_id: str, openai_key: str):
-    db_user = get_or_create_user(user_id=user_id)
+    db_user = get_or_create_user(db=db, user_id=user_id)
     db_user.openai_key = openai_key
     db.commit()
     db.refresh(db_user)
@@ -45,5 +45,9 @@ def update_openai_key(db: Session, user_id: str, openai_key: str):
 
 
 def check_openai_key(db: Session, user_id: str):
-    db_user = get_or_create_user(user_id=user_id)
+    db_user = get_or_create_user(db=db, user_id=user_id)
     return db_user.openai_key is not None
+
+def get_openai_key(db: Session, user_id: str):
+    db_user = get_or_create_user(db=db, user_id=user_id)
+    return db_user.openai_key
