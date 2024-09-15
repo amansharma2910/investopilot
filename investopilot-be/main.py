@@ -113,6 +113,7 @@ async def all_stocks(session: session.SessionContainer = Depends(verify_session(
 async def add_stock(request: Request, session: session.SessionContainer = Depends(verify_session()), db: SessionLocal = Depends(get_db)): # type: ignore
     user_id = session.get_user_id()
     data = await request.json()
+    data = data.get("stocks")
     if len(data) > 0 and len(data) < 5:
         stocks = dbc.update_stocks(db, user_id, data)
         return {"stock": stocks}
@@ -166,7 +167,10 @@ async def upload_file(
         texts = text_splitter.split_text(text)
         
         # Create embeddings
-        os.environ["OPENAI_API_KEY"] = dbc.get_openai_key(db, user_id)
+        openai_key = dbc.get_openai_key(db, user_id)
+        if not openai_key:
+            return JSONResponse(status_code=400, content={"message": "OpenAI API key not found for the user"})
+        os.environ["OPENAI_API_KEY"] = openai_key
         embeddings = OpenAIEmbeddings()
         
         # Store in Supabase
@@ -176,7 +180,7 @@ async def upload_file(
                 "id": str(uuid.uuid4()),
                 "content": chunk,
                 "embedding": embedding,
-                "metadata": {
+                "document_metadata": {
                     "filename": file.filename,
                     "filing_type": filing_type,
                     "user_id": user_id
@@ -186,11 +190,15 @@ async def upload_file(
         
         return {"filename": file.filename, "message": "File uploaded, parsed, vectorized, and stored successfully"}
     except Exception as e:
-        return JSONResponse(status_code=422, content={"message": f"Error processing file: {str(e)}"})
+        print(f"\n\nError processing file: {str(e)}\n\n")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error details: {e.args}")
+        print(f"Error details: {e}")
+        return JSONResponse(status_code=422, content={"message": f"Error processing file: {str(e)}", "error_type": type(e).__name__})
 
 @app.get("/stock-predictions")
 async def stock_predictions(session: session.SessionContainer = Depends(verify_session()), db: SessionLocal = Depends(get_db)): # type: ignore
     user_id = session.get_user_id()
     stocks = dbc.get_stocks(db, user_id)
-    predictions = ai.get_stock_predictions(user_id, stocks)
+    predictions = ai.get_stock_predictions(db, user_id, stocks)
     return {"predictions": predictions}
