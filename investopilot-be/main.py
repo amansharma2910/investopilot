@@ -1,8 +1,11 @@
 import os
-from fastapi import FastAPI, Depends, Request
+from PyPDF2 import PdfReader
+
+from fastapi import FastAPI, Depends, Form, Request, UploadFile, File
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+import ai
 import db_crud as dbc
 import models
 from database import SessionLocal, engine
@@ -17,7 +20,10 @@ from supertokens_python.recipe.session.framework.fastapi import verify_session
 from supabase import create_client, Client
 
 from dotenv import load_dotenv
-
+from langchain.document_loaders import UnstructuredFileLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings
+import uuid
 
 load_dotenv()
 
@@ -87,14 +93,6 @@ async def add_stock(request: Request, session: session.SessionContainer = Depend
     else:
         return JSONResponse(status_code=400, content={"message": "Invalid data"})
 
- 
-@app.get("/insights")
-async def insights(session: session.SessionContainer = Depends(verify_session())):
-    user_id = session.get_user_id()
-    stocks = dbc.get_stocks(user_id)
-    insights = ai.get_insights(stocks)
-    return {"insights": insights}
-
 
 @app.post("/openai-key")
 async def openai_key(request: Request, session: session.SessionContainer = Depends(verify_session())):
@@ -113,4 +111,57 @@ async def check_openai_key(session: session.SessionContainer = Depends(verify_se
     has_key = dbc.check_openai_key(user_id)
     has_key = True
     return {"key": has_key}
+
+
+@app.post("/upload-file")
+async def upload_file(
+    file: UploadFile = File(...),
+    filing_type: str = Form(...),  # Either "10-K" or "10-Q"
+    session: session.SessionContainer = Depends(verify_session())
+):
+    user_id = session.get_user_id()
     
+    # Check if the file is a PDF
+    if not file.filename.lower().endswith('.pdf'):
+        return JSONResponse(status_code=400, content={"message": "Only PDF files are accepted"})
+    
+    # Read the PDF content
+    content = await file.read()
+    pdf_reader = PdfReader(io.BytesIO(content))
+    
+    # Extract text from all pages
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text() + "\n"
+    
+    # Split the text
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    texts = text_splitter.split_text(text)
+    
+    # Create embeddings
+    embeddings = OpenAIEmbeddings()
+    
+    # Store in Supabase
+    for chunk in texts:
+        embedding = embeddings.embed_query(chunk)
+        supabase.table("documents").insert({
+            "id": str(uuid.uuid4()),
+            "content": chunk,
+            "embedding": embedding,
+            "metadata": {
+                "filename": file.filename,
+                "filing_type": filing_type,
+                "user_id": user_id
+            },
+            "user_id": user_id
+        }).execute()
+    
+    return {"filename": file.filename, "message": "File uploaded, parsed, vectorized, and stored successfully"}
+
+
+@app.get("/stock-predictions")
+async def stock_predictions(session: session.SessionContainer = Depends(verify_session())):
+    user_id = session.get_user_id()
+    stocks = dbc.get_stocks(user_id)
+    predictions = ai.get_stock_predictions(user_id, stocks)
+    return {"predictions": predictions}
