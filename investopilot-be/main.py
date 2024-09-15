@@ -1,4 +1,6 @@
 import os
+import io
+import requests
 from PyPDF2 import PdfReader
 
 from fastapi import FastAPI, Depends, Form, Request, UploadFile, File
@@ -81,6 +83,29 @@ async def stocks(session: session.SessionContainer = Depends(verify_session())):
     user_id = session.get_user_id()
     stocks = dbc.get_stocks(user_id)
     return {"stocks": stocks}
+
+
+@app.get("/all-stocks")
+async def all_stocks(session: session.SessionContainer = Depends(verify_session())):
+    api_url = "https://financialmodelingprep.com/api/v3/symbol/NASDAQ"
+    api_key = os.getenv("FINANCIAL_MODELING_PREP_API_KEY")
+
+    response = requests.get(f"{api_url}?apikey={api_key}")
+    
+    if response.status_code == 200:
+        all_stocks = response.json()
+        simplified_stocks = [
+            {
+                "symbol": stock["symbol"],
+                "name": stock["name"],
+                "price": stock["price"]
+            }
+            for stock in all_stocks
+        ]
+        
+        return {"stocks": simplified_stocks}
+    else:
+        return JSONResponse(status_code=response.status_code, content={"message": "Failed to fetch stocks data"})
 
 
 @app.post("/stocks")
